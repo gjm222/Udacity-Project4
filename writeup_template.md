@@ -121,7 +121,7 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 ###Pipeline (video)
 
-Here's a [link to my video result](./marked_video.mp4)
+Here's a [link to my video result](marked_video.mp4)
 
 
 ###Discussion
