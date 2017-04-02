@@ -40,7 +40,9 @@ I then used the output `objpoints` and `imgpoints` to compute the camera calibra
 
 I applied this distortion correction to the test image using the `cv2.undistort()` function in lines #33 and #137 code in file proj4.py and obtained this result: 
 
-![alt text][image1]
+
+![alt text](images/test0.jpg)
+![alt text][images/distorted0.jpg]
 
 ###Pipeline (single images)
 
