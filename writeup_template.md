@@ -95,11 +95,14 @@ After perspective transform...
 ![After](./images/warped4.jpg)
 
 
-####4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+####4. Location of Lane-Line Pixels
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
 
-![alt text][image5]
+I created a class called lane_line_finder in `lane_locator.py` to first do a histogram of the bottom half of the perspective binary image to find a starting location of the lanes at the bottom of the image. The class is instatiated on line 264 and called on line 165 of `proj4_video_gen.py`. The class code uses nine sliding windows (one for each vertical level of the perspective image) to locate the line in each of the levels of the image.  The windows slide based on the mean values of the pixels in the window.  A window for each lane is determined by first finding the center point and then using a given margin and the height of the image diveded by the number of windows (in this case, 9).  The right lane tends to have missing lines because they tend to be dashed in the test data. Because of this bias, if the right lane windows has no pixels in the window, the right lane center point will "bump" in the same direction of the previous window.
+
+The x and y points found by the lane_locator class were fitted to numpy polylines from which a green colored trapezoidal polygon was created and is done on lines 169 through 202 of `proj4_video_gen.py`.  Finally, the perspective trapezoidal image was inverse transformed back to the original perspective and overlayed upon the original image as shown below. 
+
+![Lanes Detected](./images/visual1.jpg)
 
 ####5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
