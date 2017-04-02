@@ -57,35 +57,43 @@ I used a combination of color and gradient thresholds to generate a binary image
 
 ![Processed Binary](./images/bin2.jpg)
 
-####3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
+####3. Perspective Transformation
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The code for my perspective transform appears in lines 139 through 160 in the file `proj4_video_gen.py`.  The code takes an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose to hardcode the source and destination points in the following manner:
 
 ```
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+    src = np.float32([[610,440], 
+                     [670,440],
+                     [1042,675],
+                     [285,675]])
+    
+    xoffset = 250 #x offset for dst points                          
+    yoffset = -100 #y offset for dst points
+    img_size = (img.shape[1], img.shape[0])    
+        
+    dst = np.float32([[xoffset, yoffset], 
+                      [img_size[0]-xoffset, yoffset], 
+                      [img_size[0]-xoffset, img_size[1]], 
+                      [xoffset, img_size[1]]])
 
 ```
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+| 610, 440      | 250, -100     | 
+| 670, 440      | 1030, -100    |
+| 1042, 675     | 1030, 720     |
+| 285, 675      | 250, 720      |
 
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.  Using -100 for the upper y value of the trapezoid had the effect of stretching the transform higher thus eliminating some of the noise that was above the lane in some of the test images.
 
-![alt text][image4]
+Before perspective transform...
+![Before](./images/bin4.jpg)
+
+After perspective transform...
+![After](./images/warped4.jpg)
+
 
 ####4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
