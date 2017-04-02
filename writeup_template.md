@@ -38,17 +38,17 @@ I start by preparing "object points", which will be the (x, y, z) coordinates of
 
 I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I then save the mtx and dist results to a pickle file because this only needs to be done once.
 
-I applied this distortion correction to the test image using the `cv2.undistort()` function in lines #33 and #137 code in file proj4.py and obtained this result: 
-
+I applied this distortion correction to the test image using the `cv2.undistort()` function in lines #33 and #137 of the code in file proj4.py and obtained this result: 
 
 ![Original](./images/test1.jpg)
-![Un-distorted](./images/distorted0.jpg)
+![Un-distorted](./images/undistorted0.jpg)
 
 ###Pipeline (single images)
 
 ####1. Provide an example of a distortion-corrected image.
 To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
-![alt text][image2]
+![Original](./images/test1.jpg)
+![Un-distorted](./images/undistorted0.jpg)
 ####2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
 
