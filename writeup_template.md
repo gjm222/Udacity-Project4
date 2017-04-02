@@ -28,29 +28,33 @@ The goals / steps of this project are the following:
 ---
 ###Writeup / README
 
+###Explanation of Python Source Files
+`prog4-cal.py` -  The code does the camera calibration and saves the mtx and dist coefficients to and pickle file called "cal_pickle.p"
+`proj4.py` - The main code that loads the above pickle file and does the main functions.
+`proj4_video_gen.py` -  This is and altered version of `proj4.py` code that can run the code over a given video.
+`lane_locator.py` - This is class used by both `proj4.py` and `proj4_video_gen.py`
+
 ###Camera Calibration
 
-####1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
+####1. Computation of the camera matrix and distortion coefficients. 
 
 The code for this step is contained in lines #15 through #47 of the file called `proj4-cal.py`).  
-
-I start by preparing "object points", which will be the (x, y, z) coordinates of the 9x6 chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
+I start by preparing "object points", which will be the (x, y, z) coordinates of the 9x6 chessboard corners in the real world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 
 I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I then saved the mtx and dist coefficeints to a pickle file because this only needs to be done once.
-
-
 
 ###Pipeline (single images)
 
 ####1. Below is an example of a distortion-corrected image.
-To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
+Here is the original test image...
+
 ![Original](./images/test1.jpg)
 
-After loading the mtx and dist distortion coefficients from the pickle file and applying `cv2.undistort()` function to the test image I obtained the following result:
+After loading the mtx and dist distortion coefficients from the camera calibration pickle file and applying `cv2.undistort()` function to the test image I obtained the following result:
 
 ![Un-distorted](./images/undistorted0.jpg)
 
- Notice the white car to the right of the image to see the effect.  This was accomplished in lines #33 and #137 of the code in file proj4.py 
+Notice the white car to the right of the image to see the effect.  This was accomplished in lines #33 and #137 of the code in file `proj4.py` 
  
 ####2. Use of color transforms and gradients to create a thresholded binary image.  
 I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines #121 through #128 in `proj4_video_gen.py`).  I tried increasing the kernel size to 5x5 and 9x9 for the gradients which did smooth out the lines but also made the lines wider which gave me too many false positives when detecting lines so I reverted back to the 3x3 kernal.  Keeping high thresholds captured more line data thus helping to detect lines later in the code.  Here's output of one of the test images. I also used a color threshold on the combination of HLS and HSV color spaces based on the saturation (HLS) and the value (HSV).  Finally all binaries were combined in lines #156 through #158 in `proj4_video_gen.py` to get the following final binary image. 
@@ -102,31 +106,30 @@ I created a class called lane_line_finder in `lane_locator.py` to first do a his
 
 ![Lanes Detected](./images/visual1.jpg)
 
-The x and y points found by the lane_locator class were fitted to numpy polylines from which a green colored trapezoidal polygon was created and is done on lines 169 through 202 of `proj4_video_gen.py`.  Finally, the perspective trapezoidal image was inverse transformed back to the original perspective and overlayed upon the original image as shown below. 
+The x and y points found by the lane_locator class were fitted to numpy polylines from which a green colored trapezoidal polygon was created and is done on lines 169 through 202 of `proj4_video_gen.py`.  Finally, the perspective trapezoidal image was inverse transformed back to the original perspective and overlayed upon the original image.
+
+The radius of curvature and position of the vehicle with respect to center was done in lines #215 through #247 in my code in `proj4_video_gen.py` and overlayed onto the final image using cv2.
+
+Here is an example of my result on a test image:
 
 ![Image with Overlay](./images/final1.jpg)
 
 
-####5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+###Pipeline (video) `marked_video.mp4`
 
-I did this in lines # through # in my code in `my_other_file.py`
-
-####6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
-
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
-
-![alt text][image6]
-
----
-
-###Pipeline (video)
-
-Here's a [link to my video result](marked_video.mp4)
+Here's a [link to my video result](marked_video.mp4) 
 
 
 ###Discussion
 
-####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+####1. Discussion
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+iscuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+
+I mainly used several techniques offered in the class lessons.  I played around with various gradients.  At first I had difficulty transforming the perspective to get me the lane lines and eliminating noise.
+
+The code is somewhat biased towards using the left hand lane to determine the lane. More work would need to be done to make it work well on roads without a solid left lane line marker.
+
+I never did look in to using convolution to detect the lanes.  I also should have done a averaging technique on the frames to make it smoother.
+
 
