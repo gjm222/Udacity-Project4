@@ -23,45 +23,43 @@ The goals / steps of this project are the following:
 [video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
-###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
+### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
 ---
-###Writeup / README
+### Writeup / README
 
-###Explanation of Python Source Files
-`prog4-cal.py` -  The code does the camera calibration and saves the mtx and dist coefficients to and pickle file called "cal_pickle.p"
-`proj4.py` - The main code that loads the above pickle file and does the main functions.
-`proj4_video_gen.py` -  This is and altered version of `proj4.py` code that can run the code over a given video.
-`lane_locator.py` - This is class used by both `proj4.py` and `proj4_video_gen.py`
+### Explanation of Python Source Files
+* `prog4-cal.py` -  The code does the camera calibration and saves the mtx and dist coefficients to and pickle file called "cal_pickle.p"
+* `proj4.py` - The main code that loads the above pickle file and does the main functions.
+* `proj4_video_gen.py` -  This is and altered version of `proj4.py` code that can run the code over a given video.
+* `lane_locator.py` - This is class used by both `proj4.py` and `proj4_video_gen.py`
 
-###Camera Calibration
+### Camera Calibration
 
-####1. Computation of the camera matrix and distortion coefficients. 
+#### 1. Computation of the Camera Matrix and Distortion Coefficients
 
 The code for this step is contained in lines #15 through #47 of the file called `proj4-cal.py`).  
 I start by preparing "object points", which will be the (x, y, z) coordinates of the 9x6 chessboard corners in the real world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 
 I then used the output `objpoints` and `imgpoints` to compute the camera calibration and distortion coefficients using the `cv2.calibrateCamera()` function.  I then saved the mtx and dist coefficeints to a pickle file because this only needs to be done once.
 
-###Pipeline (single images)
+### Pipeline (single images)
 
-####1. Below is an example of a distortion-corrected image.
+#### 1. Below is an example of a distortion-corrected image.
+
 Here is the original test image...
-
 ![Original](./images/test1.jpg)
 
 After loading the mtx and dist distortion coefficients from the camera calibration pickle file and applying `cv2.undistort()` function to the test image I obtained the following result:
-
 ![Un-distorted](./images/undistorted0.jpg)
-
 Notice the white car to the right of the image to see the effect.  This was accomplished in lines #33 and #137 of the code in file `proj4.py` 
  
-####2. Use of color transforms and gradients to create a thresholded binary image.  
+#### 2. Use of color transforms and gradients to create a thresholded binary image.  
 I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines #121 through #128 in `proj4_video_gen.py`).  I tried increasing the kernel size to 5x5 and 9x9 for the gradients which did smooth out the lines but also made the lines wider which gave me too many false positives when detecting lines so I reverted back to the 3x3 kernal.  Keeping high thresholds captured more line data thus helping to detect lines later in the code.  Here's output of one of the test images. I also used a color threshold on the combination of HLS and HSV color spaces based on the saturation (HLS) and the value (HSV).  Finally all binaries were combined in lines #156 through #158 in `proj4_video_gen.py` to get the following final binary image. 
 
 ![Processed Binary](./images/bin2.jpg)
 
-####3. Perspective Transformation
+#### 3. Perspective Transformation
 
 The code for my perspective transform appears in lines 139 through 160 in the file `proj4_video_gen.py`.  The code takes an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose to hardcode the source and destination points in the following manner:
 
@@ -99,8 +97,7 @@ After perspective transform...
 ![After](./images/warped4.jpg)
 
 
-####4. Location of Lane-Line Pixels
-
+#### 4. Location of Lane-Line Pixels
 
 I created a class called lane_line_finder in `lane_locator.py` to first do a histogram of the bottom half of the perspective binary image to find a starting location of the lanes at the bottom of the image. The class is instatiated on line 264 and called on line 165 of `proj4_video_gen.py`. The class code uses nine sliding windows (one for each vertical level of the perspective image) to locate the line in each of the levels of the image.  The windows slide based on the mean values of the pixels in the window.  A window for each lane is determined by first finding the center point and then using a given margin and the height of the image diveded by the number of windows (in this case, 9).  The right lane tends to have missing lines because they tend to be dashed in the test data. Because of this bias, if the right lane windows has no pixels in the window, the right lane center point will "bump" in the same direction of the previous window. See image below...
 
@@ -115,21 +112,17 @@ Here is an example of my result on a test image:
 ![Image with Overlay](./images/final1.jpg)
 
 
-###Pipeline (video) `marked_video.mp4`
+### Pipeline (video) `marked_video.mp4`
 
 Here's a [link to my video result](marked_video.mp4) 
 
 
-###Discussion
+### Discussion of Issues
 
-####1. Discussion
+I mainly used several techniques that were done in the class lessons.  I played around with various gradients and found that using the highest thresholded intensity values (like 150 to 255) worked best.  Also, using the HLS and HSV color spaces really improved the binay line images.
 
-iscuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+At first I had difficulty transforming the perspective to get the lane lines without too much noise.  I am surprised at how much this effects the results of the entire project.  After transforming closer to the sides and stretching the length I got the desired result.  
 
-I mainly used several techniques offered in the class lessons.  I played around with various gradients.  At first I had difficulty transforming the perspective to get me the lane lines and eliminating noise.
-
-The code is somewhat biased towards using the left hand lane to determine the lane. More work would need to be done to make it work well on roads without a solid left lane line marker.
-
-I never did look in to using convolution to detect the lanes.  I also should have done a averaging technique on the frames to make it smoother.
+The code is somewhat biased towards using the left hand lane to determine what to do with the right hand lane if no data is present in the window. More work would need to be done to make it work well on roads without a solid left lane line marker.  I never did look in to using convolution to detect the lanes which may have resolved some issues.  I also should have done an averaging technique on lines in previous frames to make it more robust.
 
 
