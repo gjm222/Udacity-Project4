@@ -55,7 +55,7 @@ After loading the mtx and dist distortion coefficients from the camera calibrati
 Notice the white car to the right of the image to see the effect.  This was accomplished in lines #33 and #137 of the code in file `proj4.py` 
  
 #### 2. Use of color transforms and gradients to create a thresholded binary image.  
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines #121 through #128 in `proj4_video_gen.py`).  I tried increasing the kernel size to 5x5 and 9x9 for the gradients which did smooth out the lines but also made the lines wider which gave me too many false positives when detecting lines so I reverted back to the 3x3 kernal.  Keeping high thresholds captured more line data thus helping to detect lines later in the code.  Here's output of one of the test images. I also used a color threshold on the combination of HLS and HSV color spaces based on the saturation (HLS) and the value (HSV).  Finally all binaries were combined in lines #156 through #158 in `proj4_video_gen.py` to get the following final binary image. 
+I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines #121 through #128 in `proj4_video_gen.py`).  I tried increasing the kernel size to 5x5 and 9x9 for the gradients which did smooth out the lines but also made the lines and noise wider which gave me too many false positives when detecting lines so I reverted back to the 3x3 kernal.  Keeping high thresholds captured more line data thus helping to detect lines later in the code.  I also used a color threshold on the combination of HLS and HSV color spaces based on the saturation (HLS) and the value (HSV).  Finally all binaries were combined in lines #146 through #158 in `proj4.py` to get the following final binary image. 
 
 ![Processed Binary](./images/bin2.jpg)
 
@@ -119,10 +119,16 @@ Here's a [link to my video result](marked_video.mp4)
 
 ### Discussion of Issues
 
+#### General discussion
+
 I mainly used several techniques that were done in the class lessons.  I played around with various gradients and found that using the highest thresholded intensity values (like 150 to 255) worked best.  Also, using the HLS and HSV color spaces really improved the binay line images.
 
 At first I had difficulty transforming the perspective to get the lane lines without too much noise.  I am surprised at how much this effects the results of the entire project.  After transforming closer to the sides and stretching the length I got the desired result.  
 
+#### Improvements
+
 The code is somewhat biased towards using the left hand lane to determine what to do with the right hand lane if no data is present in the window. More work would need to be done to make it work well on roads without a solid left lane line marker.  I never did look in to using convolution to detect the lanes which may have resolved some issues.  I also should have done an averaging technique on lines in previous frames to make it more robust.
+
+Also, the `proj4.py` and `proj4_video.gen.py` code should have been combined to avoid sycronization issues
 
 
