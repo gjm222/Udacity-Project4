@@ -55,40 +55,36 @@ After loading the mtx and dist distortion coefficients from the camera calibrati
 Notice the white car to the right of the image to see the effect.  This was accomplished in lines #33 and #137 of the code in file `proj4.py` 
  
 #### 2. Use of color transforms and gradients to create a thresholded binary image.  
-I used a combination of the color space RGB and HSV thresholds to generate a binary image (thresholding function `color_thresh` starting at line 144 in `proj4_video_gen.py`).  I tried using gradients as well but did not get great results even when increasing the kernel size to 5x5 and 9x9 for the gradients which did smooth out the lines but also picked up noise.  The color thresholds focussing on yellow and white lines using a combination of RGB and HSV color spaces based on the yellow hue from HSV and the red and green values from RGB provided very distinct lines in the images.  Finally all binaries were combined in lines #146 through #158 in `proj4.py` to get the following final binary image. 
+I used a combination of the color space RGB and HSV thresholds to generate a binary image (thresholding function `color_thresh` starting at line 144 in `proj4_video_gen.py`).  I tried using gradients as well but did not get great results even when increasing the kernel size to 5x5 and 9x9 for the gradients which did smooth out the lines but also picked up noise.  The color thresholds focussing on yellow and white lines using a combination of RGB and HSV color spaces based on the yellow hue from HSV and the red and green values from RGB provided very distinct lines in the images.  Using the colors worked very well in shadows.  Here is a binary image example.... 
 
-![Processed Binary](./images/bin2.jpg)
+![Processed Binary](./images/bin3.jpg)
 
 #### 3. Perspective Transformation
 
-The code for my perspective transform appears in lines 139 through 160 in the file `proj4_video_gen.py`.  The code takes an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose to hardcode the source and destination points in the following manner:
+The code for my perspective transform appears in lines 366 through 385 in the file `proj4_video_gen.py`.  The code takes an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose to hardcode the source and destination points in the following manner:
 
 ```
-    src = np.float32([[610,440], 
-                     [670,440],
+    src = np.float32([[285,675], 
                      [1042,675],
-                     [285,675]])
+                     [509,511],
+                     [792,511]])
     
-    xoffset = 250 #x offset for dst points                          
-    yoffset = -100 #y offset for dst points
-    img_size = (img.shape[1], img.shape[0])    
-        
-    dst = np.float32([[xoffset, yoffset], 
-                      [img_size[0]-xoffset, yoffset], 
-                      [img_size[0]-xoffset, img_size[1]], 
-                      [xoffset, img_size[1]]])
+    dst = np.float32([[320, 720], 
+                      [920, 720], 
+                      [320, 500],
+                      [920, 500]]) 
 
 ```
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 610, 440      | 250, -100     | 
-| 670, 440      | 1030, -100    |
-| 1042, 675     | 1030, 720     |
-| 285, 675      | 250, 720      |
+| 285, 675      | 320, 720     | 
+| 1042, 675     | 920, 720     |
+| 509, 511      | 320, 500     |
+| 792, 511      | 920, 500     |
 
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.  Using -100 for the upper y value of the trapezoid had the effect of stretching the transform higher thus eliminating some of the noise that was above the lane in some of the test images.
+I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.  
 
 Before perspective transform...
 ![Before](./images/bin4.jpg)
@@ -99,13 +95,15 @@ After perspective transform...
 
 #### 4. Location of Lane-Line Pixels
 
-I created a class called lane_line_finder in `lane_locator.py` to first do a histogram of the bottom half of the perspective binary image to find a starting location of the lanes at the bottom of the image. The class is instatiated on line 264 and called on line 165 of `proj4_video_gen.py`. The class code uses nine sliding windows (one for each vertical level of the perspective image) to locate the line in each of the levels of the image.  The windows slide based on the mean values of the pixels in the window.  A window for each lane is determined by first finding the center point and then using a given margin and the height of the image divided by the number of windows (in this case, 9).  The right lane tends to have missing lines because they are usually dashed in the test data. Because of this bias, if the right lane windows has no pixels in the window, the right lane center point will "bump" in the same direction of the previous window. The code that does this is on lines 101 to 110 in `lane_locator.py`.  See detected lanes image below...
+I created a class called lane_line_finder in `lane_locator.py` to first do a histogram of the bottom half of the perspective binary image to find a starting location of the lanes at the bottom of the image. The class is instatiated on line 588 and called on line 389 of `proj4_video_gen.py`. The class code uses nine sliding windows (one for each vertical level of the perspective image) to locate the line in each of the levels of the image.  The windows slide based on the mean values of the pixels in the window.  A window for each lane is determined by first finding the center point and then using a given margin and the height of the image divided by the number of windows (in this case, 9).  If the initial left and right points were found prevously the histogram is not performed again unless a "reset" is determined to be necessary because of issues with the data. The right lane tends to have missing lines because they are usually dashed in the test data. Because of this bias, if the right lane windows has no pixels in the window, the right lane center point will "bump" in the same direction of the previous window. The code that does this is on lines 109 to 119 in `lane_locator.py`.  See detected lanes image below...
 
 ![Lanes Detected](./images/visual1.jpg)
 
-The x and y points found by the lane_locator class were fitted to numpy polylines from which a green colored trapezoidal polygon was created and is done on lines 169 through 202 of `proj4_video_gen.py`.  Finally, the perspective trapezoidal image was inverse transformed back to the original perspective and overlayed upon the original image.
+Logic was added to determine if the lines were parallel and if they deviated much from the averay poly line coefficients.  The code is on lines 400 through 463 in `proj4_video_gen.py`.  A configurable amount of successful poly line coefficeints were saved so that averaging and comparing coulde be done.
 
-The radius of curvature and position of the vehicle with respect to center was done in lines #215 through #247 in my code in `proj4_video_gen.py` and overlayed onto the final image using cv2.
+To visually see the result, the x and y points found by the lane_locator class were fitted to numpy polylines from which a green colored trapezoidal polygon was created and is done on lines 487 through 497 of `proj4_video_gen.py`.  Finally, the perspective trapezoidal image was inverse transformed back to the original perspective and overlayed upon the original image.
+
+The radius of curvature with a function starting on line 188 and position of the vehicle with respect to center was done in lines 547 through 548 in my code in `proj4_video_gen.py` and overlayed onto the final image using cv2.
 
 Here is an example of my result on a test image:
 
@@ -121,7 +119,7 @@ Here's a [link to my video result](marked_video.mp4)
 
 #### General discussion
 
-I mainly used several techniques that were done in the class lessons.  I played around with various gradients and found that using the highest thresholded intensity values (like 150 to 255) worked best.  Also, using the HLS and HSV color spaces really improved the binay line images.
+I mainly used several techniques that were done in the class lessons.  I played around with various gradients and found that using the highest thresholded intensity values (like 150 to 255) worked best but did not do well in shady regions.  Using the RGB and HSV color spaces proved to be the best so that is what i used exclusively for line detection.
 
 At first I had difficulty transforming the perspective to get the lane lines without too much noise.  I am surprised at how much this effects the results of the entire project.  After transforming closer to the sides and stretching the length I got the desired result.  
 
