@@ -588,11 +588,12 @@ bfirst = True # For testing only
 lfinder = lane_line_finder(9, 100, 50)
     
 
-output_video = 'marked_challenge_video.mp4'
+'''output_video = 'marked_challenge_video.mp4'
 input_video = 'challenge_video.mp4'
-'''output_video = 'marked_video.mp4'
-input_video = 'project_video.mp4'
 '''
+output_video = 'marked_video.mp4'
+input_video = 'project_video.mp4'
+
 clip1 = VideoFileClip(input_video)
 video_clip = clip1.fl_image(process_image)
 video_clip.write_videofile(output_video, audio=False)
