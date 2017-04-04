@@ -12,8 +12,12 @@ import matplotlib.image as mpimg
 import pickle
 import glob
 from lane_locator import lane_line_finder
+from line import lines
+
+
 
 bOutputVisual = True
+
 
 
 
@@ -84,7 +88,7 @@ def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
 
 
 # Edit this function to create your own pipeline.
-def color_thresh(img, s_thresh=(0, 255), v_thresh=(0, 255)):
+def color_thresh_org(img, s_thresh=(0, 255), v_thresh=(0, 255)):
     img = np.copy(img)
     # Convert to HSV color space and separate the V channel
     hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS).astype(np.float)
@@ -99,11 +103,18 @@ def color_thresh(img, s_thresh=(0, 255), v_thresh=(0, 255)):
     v_channel = hsv[:,:,2]
     v_binary = np.zeros_like(v_channel)
     v_binary[(v_channel >= v_thresh[0]) & (v_channel <= v_thresh[1])] = 1
+             
+    r_channel = img[:,:,0]
+    g_channel = img[:,:,1]
+    b_channel = img[:,:,2]
+    rg_binary = np.zeros_like(r_channel)
+    rg_binary[((r_channel > 250) & (g_channel > 250) & (b_channel < 5)) | 
+            ((r_channel > 240) & (g_channel > 240) & (b_channel > 240))] = 1         
       
     
     # Threshold color channel
     color_binary = np.zeros_like(v_channel)
-    color_binary[(s_binary == 1) & (v_binary == 1)] = 1
+    color_binary[(s_binary == 1) & (v_binary == 1) | rg_binary == 1] = 1
     # Stack each channel
     # Note color_binary[:, :, 0] is all 0s, effectively an all black image. It might
     # be beneficial to replace this channel with something else.
@@ -111,7 +122,165 @@ def color_thresh(img, s_thresh=(0, 255), v_thresh=(0, 255)):
     
     return color_binary
 
+# Edit this function to create your own pipeline.
+def color_thresh(img, h_thresh=(20, 50), v_thresh=(0, 255), s_thresh=(0,255)):
+    img = np.copy(img)
+    # Convert to HLS color space and separate the S channel and threshold
+    #hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS).astype(np.float)
+    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float)
+    s_channel = hls[:,:,1]
+    print("schannel", np.amax(s_channel))
+    s_binary = np.zeros_like(s_channel)
+    s_binary[(s_channel >= s_thresh[0]) & (s_channel <= s_thresh[1])] = 1
+    
+    #hue         
+    h_channel = hls[:,:,0]
+    print("hchannel", np.amax(h_channel))
+    h_binary = np.zeros_like(h_channel)
+    h_binary[(h_channel >= h_thresh[0]) & (h_channel <= h_thresh[1])] = 1         
+    
+    # Convert to HSV color space and separate V channel and threshold
+    #hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV).astype(np.float)    
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float)    
+    v_channel = hsv[:,:,2]
+    v_binary = np.zeros_like(v_channel)
+    v_binary[(v_channel >= v_thresh[0]) & (v_channel <= v_thresh[1])] = 1
+             
+    #Look for yellow and white             
+    r_channel = img[:,:,2]
+    g_channel = img[:,:,1]
+    b_channel = img[:,:,0]
+    rg_binary = np.zeros_like(r_channel)
+    #rg_binary[((r_channel > 100) & (g_channel > 100)) | 
+    #        ((r_channel > 220) & (g_channel > 220) & (b_channel > 220))] = 1         
+    
+            
+    #identifies yellow line        
+    #rg_binary[(r_channel > 200) & (g_channel > 150) ] = 1                 
+    rg_binary[(r_channel > 200) & (g_channel > 150) ] = 1                 
+      
+               
+               
+    # Threshold color channel
+    color_binary = np.zeros_like(v_channel)
+    #color_binary[(s_binary == 1) & (v_binary == 1) | rg_binary == 1] = 1         
+    #color_binary[((h_binary == 1 ) & (s_binary == 1)) | (rg_binary == 1)] = 1                      
+    
+    color_binary[(h_binary == 1) | ((r_channel > 200) & (g_channel > 150)) ] = 1                      
+    
+    return color_binary
+
+
+def get_curve_rad(leftx, rightx, xm_per_pix, ym_per_pix):
+    # Generate some fake data to represent lane-line pixels
+    ploty = np.linspace(0, 719, num=720)# to cover same y-range as image
+    quadratic_coeff = 3e-4 # arbitrary quadratic coefficient
+    # For each y position generate random x position within +/-50 pix
+    # of the line base position in each case (x=200 for left, and x=900 for right)
+    leftx = np.array([200 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) 
+                                  for y in ploty])
+    rightx = np.array([900 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) 
+                                    for y in ploty])
+    
+    leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
+    rightx = rightx[::-1]  # Reverse to match top-to-bottom in y
+    
+    
+    y_eval = np.max(ploty)
+    '''left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
+    right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
+    print(left_curverad, right_curverad)
+    ''' 
+        
+    # Fit new polynomials to x,y in world space
+    left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
+    right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
+    # Calculate the new radii of curvature
+    left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+    right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+    # Now our radius of curvature is in meters
+    print(left_curverad, 'm', right_curverad, 'm')
+    # Example values: 632.1 m    626.2 m
+    return left_curverad, right_curverad
+
+
+#Check average line - 
+def check_line_avg(fit, framesq, linedata, boverride=False):
+    
+    breturn = False
+    print(len(framesq))
+    if len(framesq) > int(maxframes / 2) and not boverride:
+        
+        buffer2 = 2.0
+        buffer1 = 3.0
+        buffer0 = 150.0
+        
+        '''buffer2 = 9999.0
+        buffer1 = 9999.0
+        buffer0 = 9999.0'''
+        
+        x2 = 0.0
+        x1 = 0.0
+        x0 = 0.0
+        
+        #Get average of coefficients
+        for i in framesq:
+            print('qqqq entry', i.current_fit)
+            x2 += i.current_fit[0]
+            x1 += i.current_fit[1]
+            x0 +=  i.current_fit[2]
+            #
+        x2 = x2 / len(framesq)    
+        x1 = x1 / len(framesq)    
+        x0 = x0 / len(framesq)    
+        if fit[0] > (x2 - buffer2) and fit[0] < (x2 + buffer2):
+            if fit[1] > (x1 - buffer1) and fit[1] < (x1 + buffer1):
+                if fit[0] > (x0 - buffer0) and fit[0] < (x0 + buffer0):
+                    #if passed then add to frames queue
+                    framesq.append(linedata)
+                    if len(framesq)  > maxframes:
+                        framesq.pop(0)                        
+                        breturn = True
+                        print("Passed!!!")
+    else:
+        
+        if boverride:
+            print("Overridden")
+        else:
+            print("Filling data")
+        breturn = True
+        framesq.append(linedata)
+        if len(framesq)  > maxframes:
+            framesq.pop(0)
+    
+    return breturn
+
+#Check line parallel - Check coefficients of X2 an X1
+def is_line_parallel(left_fit, right_fit, x2buffer=.3, x1buffer=0.5):
+    
+    breturn = False
+    
+    if (right_fit[0] > (left_fit[0] - x2buffer)) and (right_fit[0] < (left_fit[0] + x2buffer)):
+        if (right_fit[1] > (left_fit[1] - x1buffer)) and (right_fit[1] < (left_fit[1] + x1buffer)):
+            breturn = True
+
+    return breturn
+
+
+#Main functions
+
 print("Starting...")
+
+#Setup frames liw5
+maxframes = 2
+maxfails = 2
+lframesq = []  
+rframesq = [] 
+lfailcount = 0
+rfailcount = 0
+
+ 
+
 
 #Calibrate camera
 
@@ -123,13 +292,16 @@ dist = dist_pickle["dist"]
 
 
 # Get file names of test images
-images = glob.glob('test_images\\test*.jpg')
+#images = glob.glob('test_images\\test*.jpg')
+images = glob.glob('snapshots\\vlcsnap-*.jpg')
+
 
 bfirst = True
 
 #Initialize lane finder object
 lfinder = lane_line_finder(9, 75, 50)
 
+breset = True
 
 #For each image found... 
 for index, fname in enumerate(images):
@@ -147,15 +319,20 @@ for index, fname in enumerate(images):
     gradx = abs_sobel_thresh(img, orient='x', sobel_kernel=ksize, thresh=(150, 200)) #20 100
     grady = abs_sobel_thresh(img, orient='y', sobel_kernel=ksize, thresh=(150, 200)) #20 100
     
-    mag_binary = mag_thresh(img, sobel_kernel=ksize, mag_thresh=(50, 255))#30 100
-    dir_binary = dir_threshold(img, sobel_kernel=ksize, thresh=(0.6, 1.4)) #np.pi/2  
+    mag_binary = mag_thresh(img, sobel_kernel=ksize, mag_thresh=(50, 100))#30 100
+    dir_binary = dir_threshold(img, sobel_kernel=ksize, thresh=(0.7, 1.3)) #np.pi/2  
     
-    color_binary = color_thresh(img, s_thresh=(150, 255), v_thresh=(128, 255))
+    #color_binary = color_thresh(img, s_thresh=(150, 255), v_thresh=(128, 255))
+    color_binary = color_thresh(img)
+    combined = color_binary * 255
+    
+    #plt.imshow(img)
     
     #combine                          
-    combined = np.zeros_like(dir_binary)
-    combined[((gradx == 1) & (grady == 1)) | ((mag_binary == 1) & (dir_binary == 1)) | (color_binary == 1)] = 1  
-    combined = combined * 255        
+    '''combined = np.zeros_like(dir_binary)
+    combined[((gradx == 1) & (grady == 1) & (mag_binary == 1) & (dir_binary == 1)) | (color_binary == 1)] = 1  
+    combined = combined * 255
+    '''
                           
     #output binary image
     outname = 'output_images\\bin' + str(index) + '.jpg'
@@ -164,16 +341,36 @@ for index, fname in enumerate(images):
     
     
     
-         
+    src = np.float32([
+                     [285,675],
+                     [1042,675], 
+                     [509,511],
+                     [792,511]
+                     ])
+    
+    xoffset = 500 #x offset for dst points                          
+    yoffset = 0 #y offset for dst points
+    img_size = (img.shape[1], img.shape[0])    
+    
+    print("img_size[0]-xoffset", img_size[0]-xoffset)
+    print("img_size[1]", img_size[1])
+    
+        # c) define 4 destination points dst = np.float32([[,],[,],[,],[,]])
+    dst = np.float32([[320, 720], 
+                      [920, 720], 
+                      [320, 550],
+                      [920, 550]])
+                      
+        
     #Source coordinates obtained by eyeballing points off a straight
     #road image of the same resolution using MS paint pgm    
-    src = np.float32([[610,440], 
+    '''src = np.float32([[610,440], 
                      [670,440],
                      [1042,675],
                      [285,675]])
     
     xoffset = 250 #x offset for dst points                          
-    yoffset = -200 #y offset for dst points
+    yoffset = 0 #y offset for dst points
     img_size = (img.shape[1], img.shape[0])    
     
         # c) define 4 destination points dst = np.float32([[,],[,],[,],[,]])
@@ -181,7 +378,7 @@ for index, fname in enumerate(images):
                       [img_size[0]-xoffset, yoffset], 
                       [img_size[0]-xoffset, img_size[1]], 
                       [xoffset, img_size[1]]])
-        
+    '''    
     
     #use cv2.getPerspectiveTransform() to get M, the transform matrix
     M = cv2.getPerspectiveTransform(src, dst)
@@ -199,7 +396,7 @@ for index, fname in enumerate(images):
         
         
     #locate lanes
-    lfinder.make_lane_windows(warped, index)
+    lfinder.make_lane_windows(warped, index, breset)
     
     
     # Extract left and right line pixel positions
@@ -208,9 +405,77 @@ for index, fname in enumerate(images):
     rightx = lfinder.nonzerox[lfinder.right_lane_inds]
     righty = lfinder.nonzeroy[lfinder.right_lane_inds] 
     
+    #################################################
+    ym_per_pix = 30/720 # meters per pixel in y dimension
+    xm_per_pix = 3.7/700 # meters per pixel in x dimension
+    
+    #Get curve radius
+    left_curverad, right_curverad = get_curve_rad(leftx, rightx, xm_per_pix, ym_per_pix)
+    
+    print(str(index) + "---left curve=", left_curverad)
+    print("right curve=", right_curverad)
+    
     # Fit a second order polynomial to each
-    left_fit = np.polyfit(lefty, leftx, 2)
-    right_fit = np.polyfit(righty, rightx, 2)   
+    if len(leftx) > 1000:        
+        left_fit = np.polyfit(lefty, leftx, 2)
+    else:
+        left_fit = lframesq[-1].current_fit #Use latest    
+        print("No left data")
+        breset = True
+        
+    if len(rightx) != 0:    
+        right_fit = np.polyfit(righty, rightx, 2)   
+    else:    
+        right_fit = rframesq[-1].current_fit #Use latest
+        print("No right data")
+
+
+
+    if not is_line_parallel(left_fit, right_fit) and len(rframesq) != 0:
+        right_fit = rframesq[-1].current_fit #Use latest
+        print("-----Failed parallel test-----")
+    else: #Check line average   
+
+        #set left line
+        llinedata = lines()    
+        llinedata.current_fit = left_fit
+        #set right line
+        rlinedata = lines()
+        rlinedata.current_fit = right_fit    
+        
+        #Check for runaway fails
+        if lfailcount > maxfails:
+            bloverride = True
+        else:
+            bloverride = False
+            
+        if rfailcount > maxfails:
+            broverride = True
+        else:
+            broverride = False    
+        
+        #Check left lane line
+        if not check_line_avg(left_fit, lframesq, llinedata, bloverride):
+            left_fit = lframesq[-1].current_fit
+            lfailcount += 1
+        else:
+            lfailcount = 0 #reset
+        
+        #Check right lane line
+        if not check_line_avg(right_fit, rframesq, rlinedata, broverride):
+            right_fit = rframesq[-1].current_fit
+            rfailcount += 1
+        else:
+            rfailcount = 0 #reset
+        
+
+    
+    print("left_fit=", left_fit)
+    print("right_fit=", right_fit)
+    
+    
+    
+    
     
     # Generate x and y values for plotting
     ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
@@ -255,6 +520,8 @@ for index, fname in enumerate(images):
         cv2.imwrite(outname, out_img) 
         
     
+    
+    
     #Create overlay image
     warp_zero = np.zeros_like(warped).astype(np.uint8)
     color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
@@ -275,42 +542,8 @@ for index, fname in enumerate(images):
     #plt.imshow(result)
     
     
-    #################################################
     
     
-    # Generate some fake data to represent lane-line pixels
-    ploty = np.linspace(0, 719, num=720)# to cover same y-range as image
-    quadratic_coeff = 3e-4 # arbitrary quadratic coefficient
-    # For each y position generate random x position within +/-50 pix
-    # of the line base position in each case (x=200 for left, and x=900 for right)
-    leftx = np.array([200 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) 
-                                  for y in ploty])
-    rightx = np.array([900 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) 
-                                    for y in ploty])
-    
-    leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
-    rightx = rightx[::-1]  # Reverse to match top-to-bottom in y
-    
-    
-           
-    
-    y_eval = np.max(ploty)
-    '''left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
-    right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
-    print(left_curverad, right_curverad)
-    ''' 
-    ym_per_pix = 30/720 # meters per pixel in y dimension
-    xm_per_pix = 3.7/700 # meters per pixel in x dimension
-    
-    # Fit new polynomials to x,y in world space
-    left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
-    right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
-    # Calculate the new radii of curvature
-    left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
-    right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
-    # Now our radius of curvature is in meters
-    print(left_curverad, 'm', right_curverad, 'm')
-    # Example values: 632.1 m    626.2 m
     
     #camera center
     camera_center = (left_fitx[-1] + right_fitx[-1])/2
@@ -343,6 +576,8 @@ for index, fname in enumerate(images):
     
     '''
     bfirst = False
+    print('')
+    print('=========================================')
     
 print("Done")    
    

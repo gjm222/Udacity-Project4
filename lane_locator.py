@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 
 class lane_line_finder():
     def __init__(self, nwindows, margin=100, minpix=50 ):
-        self.recent_centers = [0.0] * nwindows
-        
+        self.recent_centers = [0.0, 0.0]
+        self.reset = True
         # Create empty lists to receive left and right lane pixel indices
         self.left_lane_inds = []
         self.right_lane_inds = []
@@ -27,31 +27,38 @@ class lane_line_finder():
         self.margin = margin
         self.minpix = minpix
         
-    def make_lane_windows(self, binary_warped, idx):
+    def make_lane_windows(self, binary_warped, idx, breset):
         
-        
-        # Take a histogram of the bottom half of the image
-        histogram = np.sum(binary_warped[binary_warped.shape[0]/2:,:], axis=0)
-
-        # Find the peak of the left and right halves of the histogram
-        # These will be the starting point for the left and right lines
-        midpoint = np.int(histogram.shape[0]/2)
-        leftx_base = np.argmax(histogram[:midpoint])
-        rightx_base = np.argmax(histogram[midpoint:]) + midpoint    
-        
+        self.reset = breset
         nwindows = self.nwindows                       
-                        
         # Set height of windows
         window_height = np.int(binary_warped.shape[0]/nwindows)
+        
+        #Get starting centers from beginning if reset is true
+        if self.reset == True or self.recent_centers[0] == 0.0:
+            # Take a histogram of the bottom half of the image
+            histogram = np.sum(binary_warped[binary_warped.shape[0]/2:,:], axis=0)
+    
+            # Find the peak of the left and right halves of the histogram
+            # These will be the starting point for the left and right lines
+            midpoint = np.int(histogram.shape[0]/2)
+            leftx_base = np.argmax(histogram[:midpoint])
+            rightx_base = np.argmax(histogram[midpoint:]) + midpoint    
+            
+            # Current positions to be updated for each window
+            leftx_current = leftx_base
+            rightx_current = rightx_base    
+        else:                
+            # Use last starting centers for left and right
+            leftx_current =  self.recent_centers[0][0]
+            rightx_current = self.recent_centers[0][1]
+        
         
         # Identify the x and y positions of all nonzero pixels in the image
         nonzero = binary_warped.nonzero()                
         self.nonzeroy = np.array(nonzero[0])
-        self.nonzerox = np.array(nonzero[1])
+        self.nonzerox = np.array(nonzero[1])        
         
-        # Current positions to be updated for each window
-        leftx_current = leftx_base
-        rightx_current = rightx_base
                 
 
         margin = self.margin        
@@ -97,22 +104,30 @@ class lane_line_finder():
             left_lane_inds.append(good_left_inds)
             right_lane_inds.append(good_right_inds)
             
+            
             # If you found > minpix pixels, recenter next window on their mean position
             if len(good_left_inds) > minpix:
                 leftx_current = np.int(np.mean(self.nonzerox[good_left_inds]))
                 leftx_last_bump = leftx_current - leftx_previous
             else: #go with the momentum if no data
                 leftx_current += leftx_last_bump
+                
             if len(good_right_inds) > minpix:        
                 rightx_current = np.int(np.mean(self.nonzerox[good_right_inds]))
             else:
                 # Not enough data found for right side so use left side to help
                 rightx_current += (leftx_current - leftx_previous)
-                            
+            
+            if window == 0 and self.reset == True:
+                self.recent_centers[0] = [leftx_current, rightx_current]    
+            
+        
                 
         # Concatenate the arrays of indices
         self.left_lane_inds = np.concatenate(left_lane_inds)
         self.right_lane_inds = np.concatenate(right_lane_inds)
+        self.reset = False
+        breset = False
         
         return
         
