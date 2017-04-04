@@ -127,6 +127,8 @@ At first I had difficulty transforming the perspective to get the lane lines wit
 
 The code is somewhat biased towards using the left hand lane to determine what to do with the right hand lane if no data is present in the window. More work would need to be done to make it work well on roads without a solid left lane line marker.  I never did look in to using convolution to detect the lanes which may have resolved some issues.  I also should have done an averaging technique on lines in previous frames to make it more robust.
 
+The code is heavily dependent upon color of the lines to detect lanes.  A more robust implementation would be necessary to accomodate a more diverse problem.
+
 Also, the `proj4.py` and `proj4_video.gen.py` code should have been combined to avoid sychronization issues.
 
 
