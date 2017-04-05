@@ -184,34 +184,23 @@ def color_thresh(img, h_thresh=(20, 50), v_thresh=(0, 255), s_thresh=(0,255)):
 
 
 
-
-def get_curve_rad(leftx, rightx, xm_per_pix, ym_per_pix):
-    # Generate some fake data to represent lane-line pixels
+def get_curve_rad(fit_leftx, fit_rightx, xm_per_pix, ym_per_pix):
+    
+    # Generate y values 
     ploty = np.linspace(0, 719, num=720)# to cover same y-range as image
-    quadratic_coeff = 3e-4 # arbitrary quadratic coefficient
-    # For each y position generate random x position within +/-50 pix
-    # of the line base position in each case (x=200 for left, and x=900 for right)
-    leftx = np.array([200 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) 
-                                  for y in ploty])
-    rightx = np.array([900 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) 
-                                    for y in ploty])
     
-    leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
-    rightx = rightx[::-1]  # Reverse to match top-to-bottom in y
-    
-    
+    #Use max y value to calculate curvature 
     y_eval = np.max(ploty)
+     
+    # Fit new polynomials to x,y in world space in meters
+    left_fit_cr = np.polyfit(ploty*ym_per_pix, fit_leftx*xm_per_pix, 2)
+    right_fit_cr = np.polyfit(ploty*ym_per_pix, fit_rightx*xm_per_pix, 2)
     
-        
-    # Fit new polynomials to x,y in world space
-    left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
-    right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
     # Calculate the new radii of curvature
     left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
     right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
-    # Now our radius of curvature is in meters
-    #print(left_curverad, 'm', right_curverad, 'm')
-    # Example values: 632.1 m    626.2 m
+    
+    # Return curvature in meters
     return left_curverad, right_curverad
 
 
@@ -475,13 +464,12 @@ def process_image(org_img):
     
        
        
-       
     # Generate x and y values for plotting
     ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
     
-            
+
     
     #Create overlay image
     warp_zero = np.zeros_like(warped).astype(np.uint8)
@@ -506,40 +494,13 @@ def process_image(org_img):
     
     
     #Curvature...
-
-    # Generate some fake data to represent lane-line pixels
-    ploty = np.linspace(0, 719, num=720)# to cover same y-range as image
-    quadratic_coeff = 3e-4 # arbitrary quadratic coefficient
-
-    # For each y position generate random x position within +/-50 pix
-    # of the line base position in each case (x=200 for left, and x=900 for right)
-    leftx = np.array([200 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) 
-                                  for y in ploty])
-    rightx = np.array([900 + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) 
-                                    for y in ploty])
-    
-    leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
-    rightx = rightx[::-1]  # Reverse to match top-to-bottom in y
-    
-    
-    # Fit a second order polynomial to pixel positions in each fake lane line
-    #y_eval = np.max(ploty)
-    
     
     ym_per_pix = 30/720 # meters per pixel in y dimension
     xm_per_pix = 3.7/700 # meters per pixel in x dimension
     
     #Get curve radius
-    left_curverad, right_curverad = get_curve_rad(leftx, rightx, xm_per_pix, ym_per_pix)
-    
-    #print("right curve=", right_curverad)
-    # Fit new polynomials to x,y in world space
-    #left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
-    #right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
-    # Calculate the new radii of curvature
-    #left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
-    #right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
-    # Now our radius of curvature is in meters
+    left_curverad, right_curverad = get_curve_rad(left_fitx, right_fitx, xm_per_pix, ym_per_pix)
+      
     
     
     #Camera center...
